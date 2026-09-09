@@ -5,3 +5,4 @@
  1. Docker
  2. CI/CD (GitHub Actions)
  3. Linux (Bash)
+- Сроки реализации: 09.09.2026-09.12.2026
