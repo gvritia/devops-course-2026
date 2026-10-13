@@ -94,5 +94,47 @@ fi
 
 check "Безопасные права файлов и TLS-ключа" "ok" "$PERMISSIONS_STATUS"
 
+
+echo "[5] Контейнеризация"
+
+# 5.1. Проверка службы Docker
+check "Служба Docker активна" "active" \
+    "$(systemctl is-active docker 2>/dev/null)"
+
+# 5.2. Проверка готовности PostgreSQL
+DB_HEALTH=$(docker inspect -f '{{.State.Health.Status}}' app-db-1 2>/dev/null)
+
+check "PostgreSQL находится в состоянии healthy" "healthy" "$DB_HEALTH"
+
+# 5.3. Проверка безопасности опубликованных портов
+# 5000 разрешён только на 127.0.0.1
+# 5432 не должен прослушиваться на хосте
+
+UNSAFE_PORTS=$(sudo ss -tlnH | awk '
+{
+    addr = $4
+    if (addr ~ /:(5000|5432)$/) {
+        if (addr != "127.0.0.1:5000" &&
+            addr != "127.0.0.1:5432") {
+            print addr
+        }
+    }
+}')
+
+if [[ -z "$UNSAFE_PORTS" ]]; then
+    PORT_STATUS="ok"
+else
+    PORT_STATUS="error"
+fi
+
+check "Порты 5000 и 5432 не открыты на внешних адресах" \
+    "ok" "$PORT_STATUS"
+
+# 5.4. Проверка прав файла .env
+ENV_PERMISSIONS=$(stat -c '%a' "$HOME/app/.env" 2>/dev/null)
+
+check "Права файла .env равны 600" "600" "$ENV_PERMISSIONS"
+
+
 echo "Пройдено: $PASS, не пройдено: $FAIL"
 [[ $FAIL -eq 0 ]] && exit 0 || exit 1
