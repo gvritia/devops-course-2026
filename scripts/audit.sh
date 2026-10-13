@@ -54,5 +54,45 @@ echo "[3] Учётные записи"
 
 awk -F: '$3>=1000 && $3<65534 {printf "              %s (uid=%s)\n",$1,$3}' /etc/passwd
 
+echo "[4] Веб-сервер"
+
+# 4.1. Служба Nginx должна быть активна
+check "Служба Nginx активна" "active" \
+    "$(systemctl is-active nginx 2>/dev/null)"
+
+# 4.2. Проверка синтаксиса конфигурации Nginx
+if sudo nginx -t >/dev/null 2>&1; then
+    NGINX_CONFIG="ok"
+else
+    NGINX_CONFIG="error"
+fi
+
+check "Конфигурация Nginx корректна" "ok" "$NGINX_CONFIG"
+
+# 4.3. Сертификат должен действовать ещё минимум 30 дней
+# 30 дней = 2592000 секунд
+CERT_CHECK_SECONDS="${CERT_CHECK_SECONDS:-2592000}"
+
+if openssl x509 -in /etc/ssl/certs/devops.crt \
+    -checkend "$CERT_CHECK_SECONDS" -noout >/dev/null 2>&1; then
+    CERT_STATUS="ok"
+else
+    CERT_STATUS="error"
+fi
+
+check "Сертификат действителен минимум 30 дней" "ok" "$CERT_STATUS"
+
+# 4.4. Проверка прав доступа к файлам сайта и TLS-ключу
+UNSAFE_FILES=$(find /var/www/devops-site -perm -o+w -print 2>/dev/null)
+KEY_PERMISSIONS=$(sudo stat -c '%a' /etc/ssl/private/devops.key 2>/dev/null)
+
+if [[ -z "$UNSAFE_FILES" && "$KEY_PERMISSIONS" == "600" ]]; then
+    PERMISSIONS_STATUS="ok"
+else
+    PERMISSIONS_STATUS="error"
+fi
+
+check "Безопасные права файлов и TLS-ключа" "ok" "$PERMISSIONS_STATUS"
+
 echo "Пройдено: $PASS, не пройдено: $FAIL"
 [[ $FAIL -eq 0 ]] && exit 0 || exit 1

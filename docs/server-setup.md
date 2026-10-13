@@ -172,3 +172,113 @@ sudo ufw status verbose
 При временном изменении MaxAuthTries на 10 скрипт обнаруживает нарушение: 5 проверок успешно, 1 проверка с ошибкой.
 
 После тестирования значение MaxAuthTries восстановлено до 3.
+
+## 8. Веб-сервер
+
+### 8.1. Установка Nginx
+
+На сервере установлен веб-сервер Nginx.
+
+Команда установки:
+
+sudo apt update && sudo apt install -y nginx
+
+Проверка состояния службы:
+
+systemctl status nginx
+
+Проверка конфигурации:
+
+sudo nginx -t
+
+Применение изменений:
+
+sudo systemctl reload nginx
+
+### 8.2. Расположение файлов
+
+Конфигурация сайта:
+/etc/nginx/sites-available/devops-site
+
+Активная конфигурация:
+/etc/nginx/sites-enabled/devops-site
+
+Каталог сайта:
+/var/www/devops-site
+
+Владелец каталога: devops:devops.
+
+Права каталогов: 755.
+Права HTML-файлов: 644.
+
+Стандартный сайт Nginx отключён.
+
+### 8.3. Настройка HTTPS
+
+Сайт доступен по адресу:
+
+https://devops.local
+
+HTTP-запросы перенаправляются на HTTPS
+с использованием кода 301.
+
+Сертификат:
+/etc/ssl/certs/devops.crt
+
+Закрытый ключ:
+/etc/ssl/private/devops.key
+
+Владелец закрытого ключа: root:root.
+Права закрытого ключа: 600.
+Права сертификата: 644.
+
+Срок действия сертификата:
+13.10.2026 — 13.10.2027.
+
+Команда создания сертификата:
+
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout /etc/ssl/private/devops.key \
+  -out /etc/ssl/certs/devops.crt \
+  -subj "/CN=devops.local" \
+  -addext "subjectAltName=DNS:devops.local"
+
+### 8.4. Доставка содержимого
+
+Содержимое сайта хранится в каталоге site/
+Git-репозитория devops-course-2026.
+
+Доставка выполняется сценарием:
+
+bash scripts/deploy.sh
+
+Пробный запуск:
+
+bash scripts/deploy.sh --dry-run
+
+Сценарий использует rsync через SSH,
+проверяет чистоту репозитория и наличие
+главной страницы, устанавливает права
+755/644 и проверяет доступность HTTPS.
+
+### 8.5. Проверка работы
+
+Проверка HTTP-перенаправления:
+
+curl -I http://devops.local
+
+Ожидаемый результат: 301.
+
+Проверка HTTPS из WSL:
+
+curl --cacert ~/devops.crt -I https://devops.local
+
+Ожидаемый результат: 200 OK.
+
+Проверка прав на сервере:
+
+ls -la /var/www/devops-site/
+
+Проверка небезопасных файлов:
+
+find /var/www/devops-site -perm -o+w
