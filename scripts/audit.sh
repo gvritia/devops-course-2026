@@ -135,6 +135,32 @@ ENV_PERMISSIONS=$(stat -c '%a' "$HOME/app/.env" 2>/dev/null)
 
 check "Права файла .env равны 600" "600" "$ENV_PERMISSIONS"
 
+echo "[6] Контрольная работа № 2"
+
+KR2_REDIS_ID=$(docker compose --project-directory "$HOME/kr2" ps -q redis 2>/dev/null)
+KR2_REDIS_HEALTH=$(docker inspect -f '{{.State.Health.Status}}' "$KR2_REDIS_ID" 2>/dev/null)
+check "Redis КР2 находится в состоянии healthy" "healthy" "$KR2_REDIS_HEALTH"
+
+KR2_APP_PORT=$(docker compose --project-directory "$HOME/kr2" port app 8004 2>/dev/null)
+check "Порт КР2 опубликован только на loopback" "127.0.0.1:8004" "$KR2_APP_PORT"
+
+KR2_ENV_PERMISSIONS=$(stat -c '%a' "$HOME/kr2/.env" 2>/dev/null)
+check "Права файла КР2 .env равны 600" "600" "$KR2_ENV_PERMISSIONS"
+
+if openssl x509 -in /etc/ssl/certs/kr2.crt -checkend 2592000 -noout >/dev/null 2>&1; then
+    KR2_CERT_STATUS="ok"
+else
+    KR2_CERT_STATUS="error"
+fi
+check "Сертификат КР2 действителен минимум 30 дней" "ok" "$KR2_CERT_STATUS"
+
+if [[ -L /etc/nginx/sites-enabled/kr2 ]]; then
+    KR2_SITE_STATUS="active"
+else
+    KR2_SITE_STATUS="inactive"
+fi
+check "Ресурс КР2 активирован" "active" "$KR2_SITE_STATUS"
+
 
 echo "Пройдено: $PASS, не пройдено: $FAIL"
 [[ $FAIL -eq 0 ]] && exit 0 || exit 1
