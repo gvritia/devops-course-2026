@@ -1,0 +1,6 @@
+---
+app_image: "ghcr.io/gvritia/devops-ci-app"
+app_tag: "529ff9bf1d88c18714edf89364205b977eab9dd8"
+app_container_name: "devops-ci-app"
+app_host_port: 5000
+app_internal_port: 5000
